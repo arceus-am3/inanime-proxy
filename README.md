@@ -44,4 +44,4 @@ npm run worker:deploy
 
 ## Vercel
 
-Deploy the repo directly on Vercel. The root `server.js` exports the Hono app for Vercel, while `node-server.js` is used for local Node development with `npm start`.
+Deploy the repo directly on Vercel. `vercel.json` routes every request to `api/index.js`, while `node-server.js` is used for local Node development with `npm start`.
