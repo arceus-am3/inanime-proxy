@@ -3,6 +3,35 @@ import { getRuntimeConfig } from "./config.js";
 import { applyCorsHeaders, isOriginAllowed, proxyTarget } from "./proxy.js";
 import { getProviderProfiles, resolveProviderKey } from "./providers.js";
 
+function readHeader(requestLike, headerName) {
+  const normalizedName = headerName.toLowerCase();
+  const rawHeaders = requestLike?.raw?.headers ?? requestLike?.headers;
+
+  if (rawHeaders && typeof rawHeaders.get === "function") {
+    return rawHeaders.get(headerName) || rawHeaders.get(normalizedName) || "";
+  }
+
+  if (Array.isArray(rawHeaders)) {
+    for (let index = 0; index < rawHeaders.length - 1; index += 2) {
+      if (String(rawHeaders[index]).toLowerCase() === normalizedName) {
+        return String(rawHeaders[index + 1] ?? "");
+      }
+    }
+  }
+
+  if (rawHeaders && typeof rawHeaders === "object") {
+    const value = rawHeaders[normalizedName] ?? rawHeaders[headerName];
+    if (Array.isArray(value)) {
+      return value.join(", ");
+    }
+    if (value !== undefined && value !== null) {
+      return String(value);
+    }
+  }
+
+  return "";
+}
+
 function escapeHtml(value) {
   return String(value)
     .replace(/&/g, "&amp;")
@@ -477,7 +506,7 @@ export function createApp(options = {}) {
 
   app.use("*", async (c, next) => {
     const config = getRuntimeConfig(c.env, runtimeName);
-    const origin = c.req.header("origin") || "";
+    const origin = readHeader(c.req, "origin");
 
     if (c.req.method === "OPTIONS") {
       const headers = new Headers();
