@@ -122,7 +122,7 @@ function renderHomePage(config, providers, baseUrl) {
     <head>
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width, initial-scale=1">
-      <title>Anime Proxy Suite</title>
+      <title>InAnime Proxy</title>
       <style>
         :root {
           --bg: #0f1115;
@@ -298,8 +298,8 @@ function renderHomePage(config, providers, baseUrl) {
       <main>
         <section class="hero section">
           <div>
-            <h1>Anime Proxy Suite</h1>
-            <p>Unified multi-provider proxy for AnimeKai, AnimePahe, and HiAnime. Yeh page docs home hai: saare endpoints, query params, ready-made examples, aur new stream link aane par kya karna hai sab yahin explained hai.</p>
+            <h1>InAnime Proxy</h1>
+            <p>InAnime ka unified multi-provider proxy for AnimeKai, AnimePahe, and HiAnime. Yeh page docs home hai: saare endpoints, query params, ready-made examples, aur new stream link aane par kya karna hai sab yahin explained hai.</p>
           </div>
         <div class="meta">
           <div class="card">
