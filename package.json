@@ -4,8 +4,8 @@
   "description": "Unified multi-provider anime proxy for AnimeKai, AnimePahe, and HiAnime",
   "type": "module",
   "scripts": {
-    "start": "node server.js",
-    "dev": "node --watch server.js",
+    "start": "node node-server.js",
+    "dev": "node --watch node-server.js",
     "worker:dev": "wrangler dev",
     "worker:deploy": "wrangler deploy"
   },
