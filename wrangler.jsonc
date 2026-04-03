@@ -1,0 +1,10 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "anime-proxy-suite",
+  "main": "worker.js",
+  "compatibility_date": "2026-03-31",
+  "vars": {
+    "ALLOWED_ORIGINS": "*",
+    "REQUEST_TIMEOUT_MS": "20000"
+  }
+}

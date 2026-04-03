@@ -1,0 +1,21 @@
+{
+  "name": "anime-proxy-suite",
+  "version": "1.0.0",
+  "description": "Unified multi-provider anime proxy for AnimeKai, AnimePahe, and HiAnime",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "worker:dev": "wrangler dev",
+    "worker:deploy": "wrangler deploy"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.8.2",
+    "cloudscraper": "^4.6.0",
+    "dotenv": "^17.2.0",
+    "hono": "^4.7.2"
+  },
+  "devDependencies": {
+    "wrangler": "^4.8.0"
+  }
+}
