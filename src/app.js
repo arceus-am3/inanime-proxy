@@ -32,6 +32,32 @@ function readHeader(requestLike, headerName) {
   return "";
 }
 
+function resolveBaseUrl(config, requestLike) {
+  if (config.publicUrl) {
+    return config.publicUrl;
+  }
+
+  const candidateUrls = [requestLike?.url, requestLike?.raw?.url].filter(Boolean);
+  for (const candidateUrl of candidateUrls) {
+    try {
+      return new URL(candidateUrl).origin;
+    } catch {
+      // Fall through to header-based reconstruction.
+    }
+  }
+
+  const forwardedProto = readHeader(requestLike, "x-forwarded-proto");
+  const forwardedHost = readHeader(requestLike, "x-forwarded-host");
+  const host = forwardedHost || readHeader(requestLike, "host");
+  const protocol = forwardedProto || (host.includes("localhost") ? "http" : "https");
+
+  if (host) {
+    return `${protocol}://${host}`;
+  }
+
+  return "http://127.0.0.1:3000";
+}
+
 function escapeHtml(value) {
   return String(value)
     .replace(/&/g, "&amp;")
@@ -539,7 +565,7 @@ export function createApp(options = {}) {
   app.get("/", (c) => {
     const config = getRuntimeConfig(c.env, runtimeName);
     const providers = getProviderProfiles(config);
-    const baseUrl = config.publicUrl || new URL(c.req.url).origin;
+    const baseUrl = resolveBaseUrl(config, c.req);
     return c.html(renderHomePage(config, providers, baseUrl));
   });
 
@@ -607,7 +633,7 @@ export function createApp(options = {}) {
     }
 
     const profile = providers[providerKey];
-    const baseUrl = config.publicUrl || new URL(c.req.url).origin;
+    const baseUrl = resolveBaseUrl(config, c.req);
     const rawHeadersParam = c.req.query("headers") || "";
     const referer = c.req.query("referer") || "";
     const origin = c.req.query("origin") || "";
