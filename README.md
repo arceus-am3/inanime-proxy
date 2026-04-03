@@ -44,4 +44,4 @@ npm run worker:deploy
 
 ## Vercel
 
-Deploy the folder directly. `vercel.json` routes all requests to `api/index.js`.
+Deploy the repo directly on Vercel. The root `server.js` exports the Hono app for Vercel and also starts the local Node server when run with `npm start`.
