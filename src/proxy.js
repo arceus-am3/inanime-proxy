@@ -20,6 +20,16 @@ const PASS_THROUGH_HEADERS = [
 ];
 
 const cookieJar = new Map();
+const playlistCache = globalThis.__INANIME_PROXY_PLAYLIST_CACHE__ || new Map();
+const playlistInFlight = globalThis.__INANIME_PROXY_PLAYLIST_IN_FLIGHT__ || new Map();
+
+if (!globalThis.__INANIME_PROXY_PLAYLIST_CACHE__) {
+  globalThis.__INANIME_PROXY_PLAYLIST_CACHE__ = playlistCache;
+}
+
+if (!globalThis.__INANIME_PROXY_PLAYLIST_IN_FLIGHT__) {
+  globalThis.__INANIME_PROXY_PLAYLIST_IN_FLIGHT__ = playlistInFlight;
+}
 
 function readHeader(requestLike, headerName) {
   const normalizedName = headerName.toLowerCase();
@@ -296,6 +306,46 @@ function jsonError(message, status = 500, details = null) {
   );
 }
 
+function getPlaylistCacheKey(providerKey, targetUrl, rawHeadersParam) {
+  return `${providerKey}:${targetUrl.href}:${rawHeadersParam || ""}`;
+}
+
+function getCachedPlaylist(key) {
+  const cached = playlistCache.get(key);
+  if (!cached) {
+    return null;
+  }
+
+  if (cached.expiresAt <= Date.now()) {
+    playlistCache.delete(key);
+    return null;
+  }
+
+  return cached;
+}
+
+function setCachedPlaylist(key, payload, ttlMs = 60_000) {
+  playlistCache.set(key, {
+    ...payload,
+    expiresAt: Date.now() + ttlMs,
+  });
+}
+
+async function coalescePlaylist(key, factory) {
+  if (playlistInFlight.has(key)) {
+    return playlistInFlight.get(key);
+  }
+
+  const promise = Promise.resolve()
+    .then(factory)
+    .finally(() => {
+      playlistInFlight.delete(key);
+    });
+
+  playlistInFlight.set(key, promise);
+  return promise;
+}
+
 export async function proxyTarget({
   request,
   targetUrl,
@@ -347,30 +397,58 @@ export async function proxyTarget({
   const upstreamType = upstreamResponse.headers.get("content-type") || "";
 
   if (isPlaylistRequest(targetUrl, upstreamType)) {
-    const playlistBody = await upstreamResponse.text();
-    const isActualPlaylist = playlistBody.trimStart().startsWith("#EXTM3U");
-
-    if (!isActualPlaylist) {
-      responseHeaders.set("Content-Type", upstreamType || "text/plain; charset=utf-8");
-      return new Response(playlistBody, {
-        status: upstreamResponse.status,
+    const playlistCacheKey = getPlaylistCacheKey(
+      providerKey,
+      targetUrl,
+      rawHeadersParam
+    );
+    const cachedPlaylist = getCachedPlaylist(playlistCacheKey);
+    if (cachedPlaylist) {
+      responseHeaders.set(
+        "Content-Type",
+        cachedPlaylist.contentType || "application/vnd.apple.mpegurl"
+      );
+      responseHeaders.set("X-Proxy-Cache", "HIT");
+      return new Response(cachedPlaylist.body, {
+        status: 200,
         headers: responseHeaders,
       });
     }
 
-    const childHeadersParam = serializeHeadersParam(rawHeadersParam, upstreamHeaders);
-    const proxiedPlaylist = rewritePlaylist(
-      playlistBody,
-      targetUrl,
-      baseUrl,
-      providerKey,
-      childHeadersParam
-    );
+    const playlistResult = await coalescePlaylist(playlistCacheKey, async () => {
+      const playlistBody = await upstreamResponse.text();
+      const isActualPlaylist = playlistBody.trimStart().startsWith("#EXTM3U");
 
-    responseHeaders.set("Content-Type", "application/vnd.apple.mpegurl");
+      if (!isActualPlaylist) {
+        return {
+          body: playlistBody,
+          contentType: upstreamType || "text/plain; charset=utf-8",
+          status: upstreamResponse.status,
+        };
+      }
 
-    return new Response(proxiedPlaylist, {
-      status: 200,
+      const childHeadersParam = serializeHeadersParam(rawHeadersParam, upstreamHeaders);
+      const proxiedPlaylist = rewritePlaylist(
+        playlistBody,
+        targetUrl,
+        baseUrl,
+        providerKey,
+        childHeadersParam
+      );
+
+      const payload = {
+        body: proxiedPlaylist,
+        contentType: "application/vnd.apple.mpegurl",
+        status: 200,
+      };
+      setCachedPlaylist(playlistCacheKey, payload);
+      return payload;
+    });
+
+    responseHeaders.set("Content-Type", playlistResult.contentType);
+    responseHeaders.set("X-Proxy-Cache", "MISS");
+    return new Response(playlistResult.body, {
+      status: playlistResult.status,
       headers: responseHeaders,
     });
   }
