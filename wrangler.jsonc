@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "anime-proxy-suite",
+  "name": "inanime-proxy",
   "main": "worker.js",
   "compatibility_date": "2026-03-31",
   "vars": {
